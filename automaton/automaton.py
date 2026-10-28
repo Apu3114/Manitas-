@@ -1,8 +1,13 @@
 from enum import Enum
 
-SIMPLE = {"VOL_UP", "VOL_DOWN", "PLAY_PAUSE", "FORWARD", "BACK"}
-CRITICAL = {"OPEN_APP", "CLOSE_WINDOW"}
+SIMPLE = {"VOL_UP", "VOL_DOWN", "PLAY_PAUSE", "FORWARD", "BACK", "MAXIMIZE",
+          "MOVE_LEFT", "MOVE_RIGHT", "MOVE_UP", "MOVE_DOWN", "POSITION"}
+CRITICAL = {"OPEN_APP", "CLOSE_WINDOW", "MINIMIZE"}
 CONFIRM = "CONFIRM"
+
+# Tokens que se repiten si se mantiene el gesto hecho (como apretar una tecla)
+REPEAT = {"MOVE_LEFT", "MOVE_RIGHT", "MOVE_UP", "MOVE_DOWN"}
+REPEAT_DELAY = 0.4  # segundos entre repeticiones
 
 
 class State(Enum):
@@ -22,6 +27,7 @@ class GestureAutomaton:
         self._latched = None   # token ya aceptado mientras se sigue sosteniendo
         self._pending = None   # comando critico esperando confirmacion
         self._deadline = 0.0
+        self._last_emit = 0.0
 
     @property
     def state(self):
@@ -40,9 +46,16 @@ class GestureAutomaton:
         if token != self._candidate:
             self._candidate, self._count, self._latched = token, 0, None
         self._count += 1
-        if self._count < self.stable_frames or self._latched == token:
+        if self._count < self.stable_frames:
+            return None
+        if self._latched == token:
+            # Solo los tokens de REPETITION reemiten mientras se sostienen
+            if token in REPEAT and now - self._last_emit >= REPEAT_DELAY:
+                self._last_emit = now
+                return self._accept(token, now)
             return None
         self._latched = token
+        self._last_emit = now
         return self._accept(token, now)
 
     def _accept(self, token, now):
