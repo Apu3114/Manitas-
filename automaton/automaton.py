@@ -71,3 +71,12 @@ class GestureAutomaton:
             self._pending = token
             self._deadline = now + self.confirm_timeout
         return None
+
+    def reset(self):
+        """Limpia el estado latched/candidato/pending (p.ej. al iniciar un agarre)."""
+        self._candidate = None
+        self._count = 0
+        self._latched = None
+        self._pending = None
+        self._deadline = 0.0
+        self._last_emit = 0.0

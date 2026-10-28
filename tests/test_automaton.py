@@ -90,3 +90,15 @@ def test_maximize_is_simple_and_emits_once():
     assert run(a, "MAXIMIZE", 3) == "MAXIMIZE"
     assert a.state == State.IDLE
     assert run(a, "MAXIMIZE", 10) is None
+
+
+def test_reset_clears_pending_state():
+    a = GestureAutomaton(stable_frames=3, confirm_timeout=3.0)
+    run(a, "OPEN_APP", 3, t=0)
+    assert a.state == State.AWAITING
+    a.reset()
+    assert a.state == State.IDLE
+    # Tras resetear, el nuevo critical vuelve a pasar por el flujo de confirmacion
+    assert run(a, "OPEN_APP", 3, t=10) is None
+    assert a.state == State.AWAITING
+    assert run(a, "CONFIRM", 3, t=12) == "OPEN_APP"

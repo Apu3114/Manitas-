@@ -75,6 +75,7 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     sys.exit(1)
 
+prev_grab = False
 try:
     while True:
         ok, frame = cap.read()
@@ -93,7 +94,14 @@ try:
         landmarks = result.hand_landmarks[0] if result and result.hand_landmarks else None
         grabber.feed(landmarks)
         now = time.monotonic()
-        if grabber.active or grabber.suppress:
+        grabbing = grabber.active or grabber.suppress
+        if grabbing != prev_grab:
+            # Transicion de estado del gesto de agarre: limpiar el estado de
+            # movimiento/confirmacion para que no arrastre latches de otros intentos.
+            if grabbing:
+                automaton.reset()
+            prev_grab = grabbing
+        if grabbing:
             # Mientras se cierra/agarra la pinza, el automata queda mudo para
             # que el indice levantado (VOL_UP) no se dispare por accidente.
             last_command, last_time = "ARRASTRANDO..." if grabber.active else "", now
