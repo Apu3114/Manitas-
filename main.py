@@ -107,7 +107,7 @@ try:
             last_command, last_time = "ARRASTRANDO..." if grabber.active else "", now
             token = None
         else:
-            token = classify(landmarks) if landmarks else None
+            token = classify(landmarks, grabber.prev_ratio) if landmarks else None
 
         command = automaton.feed(token, now)
         if command:

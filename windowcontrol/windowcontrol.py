@@ -233,6 +233,11 @@ class WindowGrabber:
     MAP_X = (0.05, 0.95)   # margenes de la camara mapeados a todo el ancho
     MAP_Y = (0.10, 0.95)
 
+    @property
+    def prev_ratio(self):
+        """Ratio de pinza del frame anterior (para detectar cierres)."""
+        return self._prev_ratio
+
     def __init__(self):
         self.active = False
         self.suppress = False

@@ -88,7 +88,13 @@ def extended_fingers(landmarks):
     )
 
 
-def classify(landmarks):
-    if landmarks is not None and thumb_extended(landmarks):
+def classify(landmarks, prev_ratio=None):
+    if landmarks is None:
+        return None
+    if prev_ratio is not None and pinch_closing(landmarks, prev_ratio):
+        # El pulgar+indice se estan acercando: el agarre tiene prioridad y no
+        # se dejan que los patrones de dedos (VOL_UP, MOVE_*) disparen solapados.
+        return None
+    if thumb_extended(landmarks):
         return "MAXIMIZE"
     return PATTERNS.get(extended_fingers(landmarks))
