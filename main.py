@@ -83,10 +83,14 @@ try:
         frame = cv2.flip(frame, 1)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        result = landmarker.detect_for_video(image, int(time.monotonic() * 1000))
+        try:
+            result = landmarker.detect_for_video(image, int(time.monotonic() * 1000))
+        except Exception:
+            # Un frame con datos inconsistentes no debe tumbar el proceso en segundo plano.
+            result = None
 
         # Pinza (pulgar + indice): agarrar/arrastrar/soltar ventanas.
-        landmarks = result.hand_landmarks[0] if result.hand_landmarks else None
+        landmarks = result.hand_landmarks[0] if result and result.hand_landmarks else None
         grabber.feed(landmarks)
         now = time.monotonic()
         if grabber.active or grabber.suppress:
@@ -100,7 +104,11 @@ try:
         command = automaton.feed(token, now)
         if command:
             last_command, last_time = command, now
-            execute(command)
+            try:
+                execute(command)
+            except Exception:
+                # Una accion fallida (p.ej. ventana cerrada mientras se mueve) no debe tumbar el bucle.
+                pass
 
         if not SHOW and _quit_pressed():
             break
