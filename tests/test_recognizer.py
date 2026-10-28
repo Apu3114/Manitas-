@@ -2,6 +2,7 @@ from recognizer.recognizer import (
     PINCH_CLOSE_RATIO,
     PINCH_OPEN_RATIO,
     classify,
+    pinch_closing,
     pinch_closed,
     pinch_open,
     pinch_ratio,
@@ -83,3 +84,20 @@ def test_thumb_folded_does_not_maximize():
         hand[i] = Point(0.5, 0.85)  # dedos doblados
     assert thumb_extended(hand) is False
     assert classify(hand) != "MAXIMIZE"
+
+
+def test_closing_pinch_is_delegated_to_grab_priority():
+    # Gesto de agarre en curso (cierre de pinza): no debe disparar tokens
+    # de patrones de dedos como VOL_UP / MOVE_*.
+    hand = make_hand(thumb=Point(0.55, 0.60), index_tip=Point(0.60, 0.60))
+    assert pinch_closing(hand, prev_ratio=1.5) is True
+    assert classify(hand, prev_ratio=1.5) is None
+
+
+def test_open_index_only_still_maps_to_vol_up():
+    hand = make_hand()
+    hand[2] = Point(0.5, 0.82)   # base del pulgar
+    hand[4] = Point(0.5, 0.85)   # punta del pulgar (tumbado)
+    hand[6] = Point(0.5, 0.85)   # indice articulacion media doblada
+    hand[8] = Point(0.55, 0.6)   # indice extendido
+    assert classify(hand, prev_ratio=0.5) == "VOL_UP"

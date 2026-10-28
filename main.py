@@ -75,6 +75,7 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     sys.exit(1)
 
+prev_grab = False
 try:
     while True:
         ok, frame = cap.read()
@@ -83,24 +84,39 @@ try:
         frame = cv2.flip(frame, 1)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        result = landmarker.detect_for_video(image, int(time.monotonic() * 1000))
+        try:
+            result = landmarker.detect_for_video(image, int(time.monotonic() * 1000))
+        except Exception:
+            # Un frame con datos inconsistentes no debe tumbar el proceso en segundo plano.
+            result = None
 
         # Pinza (pulgar + indice): agarrar/arrastrar/soltar ventanas.
-        landmarks = result.hand_landmarks[0] if result.hand_landmarks else None
+        landmarks = result.hand_landmarks[0] if result and result.hand_landmarks else None
         grabber.feed(landmarks)
         now = time.monotonic()
-        if grabber.active or grabber.suppress:
+        grabbing = grabber.active or grabber.suppress
+        if grabbing != prev_grab:
+            # Transicion de estado del gesto de agarre: limpiar el estado de
+            # movimiento/confirmacion para que no arrastre latches de otros intentos.
+            if grabbing:
+                automaton.reset()
+            prev_grab = grabbing
+        if grabbing:
             # Mientras se cierra/agarra la pinza, el automata queda mudo para
             # que el indice levantado (VOL_UP) no se dispare por accidente.
             last_command, last_time = "ARRASTRANDO..." if grabber.active else "", now
             token = None
         else:
-            token = classify(landmarks) if landmarks else None
+            token = classify(landmarks, grabber.prev_ratio) if landmarks else None
 
         command = automaton.feed(token, now)
         if command:
             last_command, last_time = command, now
-            execute(command)
+            try:
+                execute(command)
+            except Exception:
+                # Una accion fallida (p.ej. ventana cerrada mientras se mueve) no debe tumbar el bucle.
+                pass
 
         if not SHOW and _quit_pressed():
             break
